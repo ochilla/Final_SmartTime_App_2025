@@ -37,6 +37,7 @@ export default function TopBar({ title = 'Smartime', showBack = false }: TopBarP
 
 const styles = StyleSheet.create({
   container: {
+    width: '100%',
     paddingTop: 50,
     paddingBottom: 12,
     paddingHorizontal: 16,
@@ -61,6 +62,7 @@ const styles = StyleSheet.create({
     tintColor: '#00D4FF',
   },
 });
+
 
 
 

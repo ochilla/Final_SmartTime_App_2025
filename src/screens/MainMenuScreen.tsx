@@ -12,6 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import TopBar from '../components/TopBar';
+import BottomBar from '../components/BottomBar';
 import { Ionicons } from '@expo/vector-icons';
 
 const screenWidth = Dimensions.get('window').width;
@@ -20,56 +21,69 @@ export default function MainMenuScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   return (
-    <View style={styles.container}>
+    <View style={styles.screen}>
       <TopBar title="Smartime" />
-      <ScrollView
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContainer}
-      >
-        {/* Card 1 */}
-        <View style={styles.card}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="business" size={30} color="white" />
-          </View>
-          <Text style={styles.title}>Liegenschaften</Text>
-          <Text style={styles.subtitle}>Erfassen</Text>
-          <Text style={styles.description}>Verwalten Sie Ihre Immobilien und Standorte</Text>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => navigation.navigate('AddProperty')}
-          >
-            <Text style={styles.buttonText}>Öffnen</Text>
-            <Ionicons name="chevron-forward" size={18} color="white" />
-          </TouchableOpacity>
-        </View>
 
-        {/* Card 2 */}
-        <View style={[styles.card, styles.cardAlt]}>
-          <View style={styles.iconContainerAlt}>
-            <Ionicons name="time" size={30} color="white" />
+      <View style={styles.content}>
+        <ScrollView
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContainer}
+        >
+          {/* Card 1 */}
+          <View style={styles.card}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="business" size={30} color="white" />
+            </View>
+            <Text style={styles.title}>Liegenschaften</Text>
+            <Text style={styles.subtitle}>Erfassen</Text>
+            <Text style={styles.description}>
+              Verwalten Sie Ihre Immobilien und Standorte
+            </Text>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => navigation.navigate('AddProperty')}
+            >
+              <Text style={styles.buttonText}>Oeffnen</Text>
+              <Ionicons name="chevron-forward" size={18} color="white" />
+            </TouchableOpacity>
           </View>
-          <Text style={styles.title}>Zeiterfassung</Text>
-          <Text style={styles.subtitle}>Dashboard</Text>
-          <Text style={styles.description}>Übersicht aller Zeiten und Liegenschaften</Text>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => navigation.navigate('Dashboard')}
-          >
-            <Text style={styles.buttonText}>Öffnen</Text>
-            <Ionicons name="chevron-forward" size={18} color="white" />
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+
+          {/* Card 2 */}
+          <View style={[styles.card, styles.cardAlt]}>
+            <View style={styles.iconContainerAlt}>
+              <Ionicons name="time" size={30} color="white" />
+            </View>
+            <Text style={styles.title}>Zeiterfassung</Text>
+            <Text style={styles.subtitle}>Dashboard</Text>
+            <Text style={styles.description}>
+              Uebersicht aller Zeiten und Liegenschaften
+            </Text>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => navigation.navigate('Dashboard')}
+            >
+              <Text style={styles.buttonText}>Oeffnen</Text>
+              <Ionicons name="chevron-forward" size={18} color="white" />
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
+
+      <BottomBar />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    backgroundColor: '#0c0f1f',
+    backgroundColor: '#f5f5f5',
+  },
+  content: {
+    flex: 1,
+    paddingTop: 16,
   },
   scrollContainer: {
     alignItems: 'center',
@@ -103,17 +117,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: 'white',
+    fontFamily: 'Rajdhani_600SemiBold',
   },
   subtitle: {
     fontSize: 16,
     color: 'white',
     marginBottom: 8,
+    fontFamily: 'Rajdhani_600SemiBold',
   },
   description: {
     fontSize: 13,
     color: '#d4d4d4',
     textAlign: 'center',
     marginBottom: 20,
+    fontFamily: 'Rajdhani_400Regular',
   },
   button: {
     flexDirection: 'row',
@@ -127,6 +144,8 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     marginRight: 6,
+    fontFamily: 'Rajdhani_600SemiBold',
   },
 });
+
 

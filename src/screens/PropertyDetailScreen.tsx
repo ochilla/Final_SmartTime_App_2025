@@ -1,11 +1,11 @@
-// ✅ src/screens/PropertyDetailScreen.tsx – neues Design + TopBar
+// ✅ src/screens/PropertyDetailScreen.tsx – neues Design + TopBar + BottomBar
 import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  Button,
   StyleSheet,
   FlatList,
+  TouchableOpacity,
 } from 'react-native';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -13,6 +13,7 @@ import { Property, TimeEntry } from '../types/property';
 import { getProperties, updateProperty } from '../storage/propertyStorage';
 import { getActiveTimer, setActiveTimer, clearActiveTimer } from '../storage/activeTimer';
 import TopBar from '../components/TopBar';
+import BottomBar from '../components/BottomBar';
 
 const DetailScreen = () => {
   const route = useRoute<RouteProp<RootStackParamList, 'PropertyDetail'>>();
@@ -25,7 +26,7 @@ const DetailScreen = () => {
   useEffect(() => {
     const load = async () => {
       const all = await getProperties();
-      const found = all.find(p => p.id === propertyId);
+      const found = all.find((p) => p.id === propertyId);
       if (found) {
         if (!found.timeEntries) found.timeEntries = [];
         setProperty(found);
@@ -47,7 +48,10 @@ const DetailScreen = () => {
 
   const formatTime = (iso: string) => {
     const date = new Date(iso);
-    return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')} Uhr`;
+    return `${date.getHours()}:${date
+      .getMinutes()
+      .toString()
+      .padStart(2, '0')} Uhr`;
   };
 
   const formatDate = (date: Date) => date.toISOString().split('T')[0];
@@ -87,47 +91,68 @@ const DetailScreen = () => {
 
   if (!property) {
     return (
-      <View style={styles.container}>
-        <TopBar title="Lädt..." showBack />
-        <Text style={styles.loading}>Lade Daten...</Text>
+      <View style={styles.screen}>
+        <TopBar title="Laedt..." showBack />
+        <View style={styles.content}>
+          <Text style={styles.loading}>Lade Daten...</Text>
+        </View>
+        <BottomBar />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={styles.screen}>
       <TopBar title={property.name} showBack />
 
-      <Text style={styles.address}>
-        {property.street} {property.houseNumber}, {property.city}
-      </Text>
+      <View style={styles.content}>
+        <Text style={styles.address}>
+          {property.street} {property.houseNumber}, {property.city}
+        </Text>
 
-      <Text style={styles.date}>📅 {getToday()}</Text>
+        <Text style={styles.date}>📅 {getToday()}</Text>
 
-      <View style={{ marginVertical: 20 }}>
-        {!isCheckedIn ? (
-          <Button title="Check-in starten" onPress={handleCheckIn} />
+        <View style={styles.buttonRow}>
+          {!isCheckedIn ? (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.checkInButton]}
+              onPress={handleCheckIn}
+            >
+              <Text style={styles.actionButtonText}>Check-in starten</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.checkOutButton]}
+              onPress={handleCheckOut}
+            >
+              <Text style={styles.actionButtonText}>Check-out abschliessen</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <Text style={styles.logTitle}>Zeiteintraege</Text>
+        {property.timeEntries.length === 0 ? (
+          <Text style={styles.noEntries}>Noch keine Eintraege vorhanden.</Text>
         ) : (
-          <Button title="Check-out abschliessen" onPress={handleCheckOut} color="#d9534f" />
+          <FlatList
+            data={[...property.timeEntries].sort((a, b) =>
+              b.startTime.localeCompare(a.startTime),
+            )}
+            keyExtractor={(_, index) => index.toString()}
+            renderItem={({ item }) => (
+              <View style={styles.entry}>
+                <Text style={styles.entryText}>
+                  {item.date} – Start: {formatTime(item.startTime)}, Ende:{' '}
+                  {item.endTime ? formatTime(item.endTime) : 'laeuft...'}, Dauer:{' '}
+                  {item.duration !== null ? `${item.duration} Min.` : 'laeuft...'}
+                </Text>
+              </View>
+            )}
+          />
         )}
       </View>
 
-      <Text style={styles.logTitle}>Zeiteinträge</Text>
-      {property.timeEntries.length === 0 ? (
-        <Text style={styles.noEntries}>Noch keine Einträge vorhanden.</Text>
-      ) : (
-        <FlatList
-          data={[...property.timeEntries].sort((a, b) => b.startTime.localeCompare(a.startTime))}
-          keyExtractor={(_, index) => index.toString()}
-          renderItem={({ item }) => (
-            <View style={styles.entry}>
-              <Text style={styles.entryText}>
-                {item.date} – Start: {formatTime(item.startTime)}, Ende: {item.endTime ? formatTime(item.endTime) : 'läuft...'}, Dauer: {item.duration !== null ? `${item.duration} Min.` : 'läuft...'}
-              </Text>
-            </View>
-          )}
-        />
-      )}
+      <BottomBar />
     </View>
   );
 };
@@ -135,48 +160,75 @@ const DetailScreen = () => {
 export default DetailScreen;
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    backgroundColor: '#0c0f1f',
+    backgroundColor: '#f5f5f5',
+  },
+  content: {
+    flex: 1,
     paddingHorizontal: 20,
     paddingTop: 10,
+    paddingBottom: 16,
   },
   loading: {
-    color: '#ccc',
+    color: '#555',
     marginTop: 20,
+    fontFamily: 'Rajdhani_400Regular',
   },
   address: {
     fontSize: 16,
-    color: '#aaa',
+    color: '#333',
     marginBottom: 10,
     fontFamily: 'Rajdhani_600SemiBold',
   },
   date: {
     fontSize: 16,
-    color: '#ccc',
+    color: '#555',
     marginBottom: 20,
     fontFamily: 'Rajdhani_600SemiBold',
   },
+  buttonRow: {
+    marginVertical: 10,
+  },
+  actionButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  checkInButton: {
+    backgroundColor: '#00D4FF',
+  },
+  checkOutButton: {
+    backgroundColor: '#d9534f',
+  },
+  actionButtonText: {
+    color: '#0f1c2e',
+    fontFamily: 'Rajdhani_600SemiBold',
+    fontSize: 16,
+  },
   logTitle: {
     fontWeight: 'bold',
-    marginTop: 10,
+    marginTop: 20,
     marginBottom: 10,
-    color: '#eee',
+    color: '#0f1c2e',
     fontFamily: 'Rajdhani_600SemiBold',
   },
   entry: {
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: '#ddd',
     paddingVertical: 6,
   },
   entryText: {
-    color: '#ccc',
-    fontFamily: 'Rajdhani_600SemiBold',
+    color: '#333',
+    fontFamily: 'Rajdhani_400Regular',
   },
   noEntries: {
-    color: '#999',
+    color: '#777',
     fontStyle: 'italic',
+    fontFamily: 'Rajdhani_400Regular',
   },
 });
+
 
 

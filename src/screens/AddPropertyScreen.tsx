@@ -1,4 +1,4 @@
-// ✅ src/screens/AddPropertyScreen.tsx – im neuen Design
+// ✅ src/screens/AddPropertyScreen.tsx
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import TopBar from '../components/TopBar';
+import BottomBar from '../components/BottomBar';
 
 interface Property {
   id: string;
@@ -46,7 +47,7 @@ export default function AddPropertyScreen() {
 
   const saveProperty = async () => {
     if (!formValid) {
-      Alert.alert('Fehler', 'Bitte alle Felder ausfüllen.');
+      Alert.alert('Fehler', 'Bitte alle Felder ausfuellen.');
       return;
     }
 
@@ -69,79 +70,89 @@ export default function AddPropertyScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.screen}>
       <TopBar title="Neue Liegenschaft" showBack />
 
-      <View style={styles.form}>
-        <TextInput
-          placeholder="Name"
-          placeholderTextColor="#999"
-          value={name}
-          onChangeText={setName}
-          style={styles.input}
-        />
-        <TextInput
-          placeholder="Strasse"
-          placeholderTextColor="#999"
-          value={street}
-          onChangeText={setStreet}
-          style={styles.input}
-        />
-        <TextInput
-          placeholder="Hausnummer"
-          placeholderTextColor="#999"
-          value={houseNumber}
-          onChangeText={setHouseNumber}
-          style={styles.input}
-        />
-        <TextInput
-          placeholder="Ort"
-          placeholderTextColor="#999"
-          value={city}
-          onChangeText={setCity}
-          style={styles.input}
-        />
+      <View style={styles.content}>
+        <View style={styles.form}>
+          <TextInput
+            placeholder="Name"
+            placeholderTextColor="#999"
+            value={name}
+            onChangeText={setName}
+            style={styles.input}
+          />
+          <TextInput
+            placeholder="Strasse"
+            placeholderTextColor="#999"
+            value={street}
+            onChangeText={setStreet}
+            style={styles.input}
+          />
+          <TextInput
+            placeholder="Hausnummer"
+            placeholderTextColor="#999"
+            value={houseNumber}
+            onChangeText={setHouseNumber}
+            style={styles.input}
+          />
+          <TextInput
+            placeholder="Ort"
+            placeholderTextColor="#999"
+            value={city}
+            onChangeText={setCity}
+            style={styles.input}
+          />
 
-        <TouchableOpacity
-          style={[styles.button, { opacity: formValid ? 1 : 0.5 }]}
-          onPress={saveProperty}
-          disabled={!formValid}
-        >
-          <Text style={styles.buttonText}>Speichern</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, { opacity: formValid ? 1 : 0.5 }]}
+            onPress={saveProperty}
+            disabled={!formValid}
+          >
+            <Text style={styles.buttonText}>Speichern</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.subtitle}>Erfasste Liegenschaften:</Text>
+        <FlatList
+          data={properties}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingBottom: 30 }}
+          renderItem={({ item }) => (
+            <Text style={styles.propertyItem}>
+              {item.name}, {item.street} {item.houseNumber}, {item.city}
+            </Text>
+          )}
+        />
       </View>
 
-      <Text style={styles.subtitle}>Erfasste Liegenschaften:</Text>
-      <FlatList
-        data={properties}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingBottom: 30 }}
-        renderItem={({ item }) => (
-          <Text style={styles.propertyItem}>
-            🏠 {item.name}, {item.street} {item.houseNumber}, {item.city}
-          </Text>
-        )}
-      />
+      <BottomBar />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    backgroundColor: '#0c0f1f',
+    backgroundColor: '#f5f5f5',
+  },
+  content: {
+    flex: 1,
     paddingHorizontal: 20,
+    paddingTop: 20,
   },
   form: {
-    marginTop: 20,
     marginBottom: 30,
     gap: 10,
   },
   input: {
-    backgroundColor: '#1e1e1e',
+    backgroundColor: '#ffffff',
     borderRadius: 8,
     padding: 12,
-    color: '#fff',
+    color: '#0f1c2e',
+    fontFamily: 'Rajdhani_400Regular',
+    borderWidth: 1,
+    borderColor: '#d0d0d0',
   },
   button: {
     backgroundColor: '#00D4FF',
@@ -151,19 +162,24 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   buttonText: {
-    color: '#0c0f1f',
+    color: '#0f1c2e',
     fontWeight: 'bold',
+    fontFamily: 'Rajdhani_600SemiBold',
   },
   subtitle: {
-    color: '#ccc',
+    color: '#0f1c2e',
     marginBottom: 10,
     fontWeight: 'bold',
+    fontFamily: 'Rajdhani_600SemiBold',
   },
   propertyItem: {
-    color: '#eee',
+    color: '#333',
     paddingVertical: 4,
+    fontFamily: 'Rajdhani_400Regular',
   },
 });
+
+
 
 
 
