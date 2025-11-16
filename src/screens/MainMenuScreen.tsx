@@ -31,7 +31,7 @@ export default function MainMenuScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.scrollContainer}
         >
-          {/* Card 1 */}
+          {/* Card 1: Liegenschaften */}
           <View style={styles.card}>
             <View style={styles.iconContainer}>
               <Ionicons name="business" size={30} color="white" />
@@ -50,9 +50,9 @@ export default function MainMenuScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Card 2 */}
-          <View style={[styles.card, styles.cardAlt]}>
-            <View style={styles.iconContainerAlt}>
+          {/* Card 2: Zeiterfassung – farblich wie Card 1 */}
+          <View style={[styles.card /*, styles.cardAlt (nicht mehr nötig) */]}>
+            <View style={styles.iconContainer /* iconContainerAlt entfällt */}>
               <Ionicons name="time" size={30} color="white" />
             </View>
             <Text style={styles.title}>Zeiterfassung</Text>
@@ -91,28 +91,21 @@ const styles = StyleSheet.create({
   },
   card: {
     width: screenWidth * 0.85,
-    backgroundColor: '#083c55',
+    backgroundColor: '#083c55', // Einheitlich für beide Karten
     borderRadius: 24,
     padding: 24,
     marginHorizontal: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cardAlt: {
-    backgroundColor: '#431f47',
-  },
+  // cardAlt: { backgroundColor: '#083c55' }, // nicht mehr benötigt
   iconContainer: {
-    backgroundColor: '#00d4ff',
+    backgroundColor: '#00d4ff', // Einheitlich für beide Karten
     padding: 12,
     borderRadius: 16,
     marginBottom: 20,
   },
-  iconContainerAlt: {
-    backgroundColor: '#9d4edd',
-    padding: 12,
-    borderRadius: 16,
-    marginBottom: 20,
-  },
+  // iconContainerAlt: { backgroundColor: '#00d4ff' }, // nicht mehr benötigt
   title: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -147,5 +140,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Rajdhani_600SemiBold',
   },
 });
+
 
 
