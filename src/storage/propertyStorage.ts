@@ -29,6 +29,13 @@ export const updateProperty = async (updated: Property): Promise<void> => {
   }
 };
 
+export const deleteProperty = async (propertyId: string): Promise<void> => {
+  const properties = await getProperties();
+  const filtered = properties.filter(p => p.id !== propertyId);
+  await saveProperties(filtered);
+};
+
 export const clearProperties = async () => {
   await AsyncStorage.removeItem(STORAGE_KEY);
 };
+

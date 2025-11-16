@@ -1,4 +1,4 @@
-// ✅ src/screens/AddPropertyScreen.tsx
+// ✅ src/screens/AddPropertyScreen.tsx – mit Löschen pro Eintrag
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
@@ -12,6 +12,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import TopBar from '../components/TopBar';
 import BottomBar from '../components/BottomBar';
+import { Ionicons } from '@expo/vector-icons';
 
 interface Property {
   id: string;
@@ -42,6 +43,8 @@ export default function AddPropertyScreen() {
     const json = await AsyncStorage.getItem(STORAGE_KEY);
     if (json) {
       setProperties(JSON.parse(json));
+    } else {
+      setProperties([]);
     }
   };
 
@@ -68,6 +71,43 @@ export default function AddPropertyScreen() {
     setHouseNumber('');
     setCity('');
   };
+
+  const confirmDelete = (id: string, title: string) => {
+    Alert.alert(
+      'Liegenschaft löschen',
+      `„${title}“ wirklich löschen? Dieser Schritt kann nicht rückgaengig gemacht werden.`,
+      [
+        { text: 'Abbrechen', style: 'cancel' },
+        {
+          text: 'Löschen',
+          style: 'destructive',
+          onPress: async () => {
+            const filtered = properties.filter(p => p.id !== id);
+            setProperties(filtered);
+            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+          },
+        },
+      ]
+    );
+  };
+
+  const renderItem = ({ item }: { item: Property }) => (
+    <View style={styles.propertyRow}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.propertyName}>{item.name}</Text>
+        <Text style={styles.propertyAddress}>
+          {item.street} {item.houseNumber}, {item.city}
+        </Text>
+      </View>
+      <TouchableOpacity
+        accessibilityLabel="Liegenschaft löschen"
+        onPress={() => confirmDelete(item.id, item.name)}
+        style={styles.deleteButton}
+      >
+        <Ionicons name="trash-outline" size={20} color="#ffffff" />
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <View style={styles.screen}>
@@ -113,16 +153,16 @@ export default function AddPropertyScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.subtitle}>Erfasste Liegenschaften:</Text>
+        <Text style={styles.subtitle}>Erfasste Liegenschaften</Text>
         <FlatList
           data={properties}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingBottom: 30 }}
-          renderItem={({ item }) => (
-            <Text style={styles.propertyItem}>
-              {item.name}, {item.street} {item.houseNumber}, {item.city}
-            </Text>
-          )}
+          renderItem={renderItem}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          ListEmptyComponent={
+            <Text style={styles.empty}>Noch keine Liegenschaften erfasst.</Text>
+          }
         />
       </View>
 
@@ -132,19 +172,9 @@ export default function AddPropertyScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  form: {
-    marginBottom: 30,
-    gap: 10,
-  },
+  screen: { flex: 1, backgroundColor: '#f5f5f5' },
+  content: { flex: 1, paddingHorizontal: 20, paddingTop: 20 },
+  form: { marginBottom: 30, gap: 10 },
   input: {
     backgroundColor: '#ffffff',
     borderRadius: 8,
@@ -172,12 +202,42 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontFamily: 'Rajdhani_600SemiBold',
   },
-  propertyItem: {
-    color: '#333',
-    paddingVertical: 4,
+  propertyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e6e6e6',
+  },
+  propertyName: {
+    color: '#0f1c2e',
+    fontSize: 16,
+    fontFamily: 'Rajdhani_600SemiBold',
+  },
+  propertyAddress: {
+    color: '#555',
+    fontSize: 13,
+    marginTop: 2,
     fontFamily: 'Rajdhani_400Regular',
   },
+  deleteButton: {
+    backgroundColor: '#d9534f',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    marginLeft: 12,
+  },
+  separator: { height: 10 },
+  empty: {
+    color: '#777',
+    fontStyle: 'italic',
+    fontFamily: 'Rajdhani_400Regular',
+    paddingVertical: 8,
+  },
 });
+
 
 
 

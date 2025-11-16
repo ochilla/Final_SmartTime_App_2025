@@ -1,4 +1,4 @@
-// ✅ src/screens/PropertyDetailScreen.tsx – neues Design + TopBar + BottomBar
+// ✅ src/screens/PropertyDetailScreen.tsx – Löschen-Button + 1 aktiver Timer global
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -6,17 +6,19 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
-import { RouteProp, useRoute } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { Property, TimeEntry } from '../types/property';
-import { getProperties, updateProperty } from '../storage/propertyStorage';
+import { getProperties, updateProperty, deleteProperty } from '../storage/propertyStorage';
 import { getActiveTimer, setActiveTimer, clearActiveTimer } from '../storage/activeTimer';
 import TopBar from '../components/TopBar';
 import BottomBar from '../components/BottomBar';
 
 const DetailScreen = () => {
   const route = useRoute<RouteProp<RootStackParamList, 'PropertyDetail'>>();
+  const navigation = useNavigation<any>();
   const { propertyId } = route.params;
 
   const [property, setProperty] = useState<Property | null>(null);
@@ -36,6 +38,9 @@ const DetailScreen = () => {
       if (active && active.propertyId === propertyId) {
         setIsCheckedIn(true);
         setStartTime(new Date(active.startTime));
+      } else {
+        setIsCheckedIn(false);
+        setStartTime(null);
       }
     };
     load();
@@ -48,15 +53,26 @@ const DetailScreen = () => {
 
   const formatTime = (iso: string) => {
     const date = new Date(iso);
-    return `${date.getHours()}:${date
-      .getMinutes()
-      .toString()
-      .padStart(2, '0')} Uhr`;
+    return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')} Uhr`;
   };
 
   const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
   const handleCheckIn = async () => {
+    const existing = await getActiveTimer();
+    if (existing && existing.propertyId !== propertyId) {
+      Alert.alert(
+        'Aktiver Timer vorhanden',
+        'Es laeuft bereits eine Zeiterfassung bei einer anderen Liegenschaft. Bitte zuerst dort Check-out ausfuehren.'
+      );
+      return;
+    }
+    if (existing && existing.propertyId === propertyId) {
+      setIsCheckedIn(true);
+      setStartTime(new Date(existing.startTime));
+      return;
+    }
+
     const now = new Date();
     setStartTime(now);
     setIsCheckedIn(true);
@@ -87,6 +103,31 @@ const DetailScreen = () => {
     setProperty(updated);
     setStartTime(null);
     setIsCheckedIn(false);
+  };
+
+  const confirmDeleteProperty = () => {
+    if (!property) return;
+    Alert.alert(
+      'Liegenschaft löschen',
+      `„${property.name}“ wirklich löschen? Alle zugehörigen Zeiteintraege bleiben **nicht** erhalten (sie werden mit der Liegenschaft entfernt).`,
+      [
+        { text: 'Abbrechen', style: 'cancel' },
+        {
+          text: 'Löschen',
+          style: 'destructive',
+          onPress: async () => {
+            // aktiven Timer ggf. räumen
+            const active = await getActiveTimer();
+            if (active && active.propertyId === property.id) {
+              await clearActiveTimer();
+            }
+            await deleteProperty(property.id);
+            // zurück zur Übersicht
+            navigation.navigate('Dashboard');
+          },
+        },
+      ]
+    );
   };
 
   if (!property) {
@@ -135,9 +176,7 @@ const DetailScreen = () => {
           <Text style={styles.noEntries}>Noch keine Eintraege vorhanden.</Text>
         ) : (
           <FlatList
-            data={[...property.timeEntries].sort((a, b) =>
-              b.startTime.localeCompare(a.startTime),
-            )}
+            data={[...property.timeEntries].sort((a, b) => b.startTime.localeCompare(a.startTime))}
             keyExtractor={(_, index) => index.toString()}
             renderItem={({ item }) => (
               <View style={styles.entry}>
@@ -150,6 +189,13 @@ const DetailScreen = () => {
             )}
           />
         )}
+
+        <TouchableOpacity
+          style={[styles.actionButton, styles.deleteButton]}
+          onPress={confirmDeleteProperty}
+        >
+          <Text style={[styles.actionButtonText, { color: '#ffffff' }]}>Liegenschaft löschen</Text>
+        </TouchableOpacity>
       </View>
 
       <BottomBar />
@@ -160,21 +206,9 @@ const DetailScreen = () => {
 export default DetailScreen;
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 16,
-  },
-  loading: {
-    color: '#555',
-    marginTop: 20,
-    fontFamily: 'Rajdhani_400Regular',
-  },
+  screen: { flex: 1, backgroundColor: '#f5f5f5' },
+  content: { flex: 1, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 16 },
+  loading: { color: '#555', marginTop: 20, fontFamily: 'Rajdhani_400Regular' },
   address: {
     fontSize: 16,
     color: '#333',
@@ -187,21 +221,15 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     fontFamily: 'Rajdhani_600SemiBold',
   },
-  buttonRow: {
-    marginVertical: 10,
-  },
+  buttonRow: { marginVertical: 10 },
   actionButton: {
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
     alignItems: 'center',
   },
-  checkInButton: {
-    backgroundColor: '#00D4FF',
-  },
-  checkOutButton: {
-    backgroundColor: '#d9534f',
-  },
+  checkInButton: { backgroundColor: '#00D4FF' },
+  checkOutButton: { backgroundColor: '#d9534f' },
   actionButtonText: {
     color: '#0f1c2e',
     fontFamily: 'Rajdhani_600SemiBold',
@@ -214,21 +242,15 @@ const styles = StyleSheet.create({
     color: '#0f1c2e',
     fontFamily: 'Rajdhani_600SemiBold',
   },
-  entry: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-    paddingVertical: 6,
-  },
-  entryText: {
-    color: '#333',
-    fontFamily: 'Rajdhani_400Regular',
-  },
-  noEntries: {
-    color: '#777',
-    fontStyle: 'italic',
-    fontFamily: 'Rajdhani_400Regular',
+  entry: { borderBottomWidth: 1, borderBottomColor: '#ddd', paddingVertical: 6 },
+  entryText: { color: '#333', fontFamily: 'Rajdhani_400Regular' },
+  noEntries: { color: '#777', fontStyle: 'italic', fontFamily: 'Rajdhani_400Regular' },
+  deleteButton: {
+    backgroundColor: '#b02a2a',
+    marginTop: 20,
   },
 });
+
 
 
 
