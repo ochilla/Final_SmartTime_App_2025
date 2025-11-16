@@ -19,3 +19,15 @@ export const setActiveTimer = async (timer: ActiveTimer): Promise<void> => {
 export const clearActiveTimer = async (): Promise<void> => {
   await AsyncStorage.removeItem(ACTIVE_TIMER_KEY);
 };
+
+/** Hilfsfunktion: liefert die aktive PropertyId oder null */
+export const getActivePropertyId = async (): Promise<string | null> => {
+  const t = await getActiveTimer();
+  return t ? t.propertyId : null;
+};
+
+/** Hilfsfunktion: ist diese Property gerade aktiv? */
+export const isActiveFor = async (propertyId: string): Promise<boolean> => {
+  const t = await getActiveTimer();
+  return !!t && t.propertyId === propertyId;
+};

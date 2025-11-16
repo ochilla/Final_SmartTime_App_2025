@@ -1,5 +1,5 @@
-// ✅ src/screens/PropertyDetailScreen.tsx – Löschen-Button + 1 aktiver Timer global
-import React, { useEffect, useState } from 'react';
+// ✅ src/screens/PropertyDetailScreen.tsx – Mehrere parallele Check-ins (ohne globalen activeTimer)
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,6 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { Property, TimeEntry } from '../types/property';
 import { getProperties, updateProperty, deleteProperty } from '../storage/propertyStorage';
-import { getActiveTimer, setActiveTimer, clearActiveTimer } from '../storage/activeTimer';
 import TopBar from '../components/TopBar';
 import BottomBar from '../components/BottomBar';
 
@@ -22,107 +21,99 @@ const DetailScreen = () => {
   const { propertyId } = route.params;
 
   const [property, setProperty] = useState<Property | null>(null);
-  const [isCheckedIn, setIsCheckedIn] = useState(false);
-  const [startTime, setStartTime] = useState<Date | null>(null);
+
+  // Hilfen: offener Eintrag (endTime == null) erkennen
+  const openEntryIndex = useMemo(() => {
+    if (!property?.timeEntries?.length) return -1;
+    return property.timeEntries.findIndex(e => e.endTime === null);
+  }, [property]);
+
+  const isCheckedIn = openEntryIndex !== -1;
 
   useEffect(() => {
     const load = async () => {
       const all = await getProperties();
-      const found = all.find((p) => p.id === propertyId);
-      if (found) {
-        if (!found.timeEntries) found.timeEntries = [];
-        setProperty(found);
-      }
-
-      const active = await getActiveTimer();
-      if (active && active.propertyId === propertyId) {
-        setIsCheckedIn(true);
-        setStartTime(new Date(active.startTime));
-      } else {
-        setIsCheckedIn(false);
-        setStartTime(null);
-      }
+      const found = all.find((p) => p.id === propertyId) || null;
+      if (found && !found.timeEntries) found.timeEntries = [];
+      setProperty(found);
     };
+
+    const unsubscribe = navigation.addListener('focus', load);
     load();
-  }, [propertyId]);
+    return unsubscribe;
+  }, [navigation, propertyId]);
 
-  const getToday = () => {
-    const now = new Date();
-    return now.toISOString().split('T')[0];
+  const todayISO = () => new Date().toISOString().split('T')[0];
+
+  const fmtTime = (iso: string) => {
+    const d = new Date(iso);
+    return `${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')} Uhr`;
+    // Hinweis: Für echte Lokalisierung später Intl.DateTimeFormat nutzen
   };
-
-  const formatTime = (iso: string) => {
-    const date = new Date(iso);
-    return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')} Uhr`;
-  };
-
-  const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
   const handleCheckIn = async () => {
-    const existing = await getActiveTimer();
-    if (existing && existing.propertyId !== propertyId) {
-      Alert.alert(
-        'Aktiver Timer vorhanden',
-        'Es laeuft bereits eine Zeiterfassung bei einer anderen Liegenschaft. Bitte zuerst dort Check-out ausfuehren.'
-      );
-      return;
-    }
-    if (existing && existing.propertyId === propertyId) {
-      setIsCheckedIn(true);
-      setStartTime(new Date(existing.startTime));
+    if (!property) return;
+
+    // Verhindere doppelte Check-ins in DERSELBEN Liegenschaft
+    if (isCheckedIn) {
+      Alert.alert('Bereits aktiv', 'Für diese Liegenschaft läuft bereits eine Zeiterfassung.');
       return;
     }
 
-    const now = new Date();
-    setStartTime(now);
-    setIsCheckedIn(true);
-    await setActiveTimer({ propertyId, startTime: now.toISOString() });
-  };
-
-  const handleCheckOut = async () => {
-    if (!startTime || !property) return;
-
-    const end = new Date();
-    const duration = Math.round((end.getTime() - startTime.getTime()) / 60000);
-
-    const newEntry: TimeEntry = {
-      startTime: startTime.toISOString(),
-      endTime: end.toISOString(),
-      duration,
-      date: formatDate(startTime),
+    const start = new Date();
+    const newActive: TimeEntry = {
+      startTime: start.toISOString(),
+      endTime: null,         // <- aktiv
+      duration: null,        // <- aktiv
+      date: todayISO(),
     };
 
     const updated: Property = {
       ...property,
-      timeEntries: [newEntry, ...property.timeEntries],
+      timeEntries: [newActive, ...(property.timeEntries || [])],
     };
 
     await updateProperty(updated);
-    await clearActiveTimer();
-
     setProperty(updated);
-    setStartTime(null);
-    setIsCheckedIn(false);
+  };
+
+  const handleCheckOut = async () => {
+    if (!property) return;
+    if (!isCheckedIn) return;
+
+    const end = new Date();
+    const entries = [...property.timeEntries];
+    const open = entries[openEntryIndex];
+
+    // Dauer berechnen
+    const start = new Date(open.startTime);
+    const duration = Math.round((end.getTime() - start.getTime()) / 60000);
+
+    entries[openEntryIndex] = {
+      ...open,
+      endTime: end.toISOString(),
+      duration,
+      // date bleibt das Start-Datum
+    };
+
+    const updated: Property = { ...property, timeEntries: entries };
+    await updateProperty(updated);
+    setProperty(updated);
   };
 
   const confirmDeleteProperty = () => {
     if (!property) return;
+    const name = property.name;
     Alert.alert(
       'Liegenschaft löschen',
-      `„${property.name}“ wirklich löschen? Alle zugehörigen Zeiteintraege bleiben **nicht** erhalten (sie werden mit der Liegenschaft entfernt).`,
+      `„${name}“ wirklich löschen? Alle zugehörigen Zeiteinträge werden entfernt.`,
       [
         { text: 'Abbrechen', style: 'cancel' },
         {
           text: 'Löschen',
           style: 'destructive',
           onPress: async () => {
-            // aktiven Timer ggf. räumen
-            const active = await getActiveTimer();
-            if (active && active.propertyId === property.id) {
-              await clearActiveTimer();
-            }
             await deleteProperty(property.id);
-            // zurück zur Übersicht
             navigation.navigate('Dashboard');
           },
         },
@@ -133,7 +124,7 @@ const DetailScreen = () => {
   if (!property) {
     return (
       <View style={styles.screen}>
-        <TopBar title="Laedt..." showBack />
+        <TopBar title="Lädt..." showBack />
         <View style={styles.content}>
           <Text style={styles.loading}>Lade Daten...</Text>
         </View>
@@ -151,7 +142,7 @@ const DetailScreen = () => {
           {property.street} {property.houseNumber}, {property.city}
         </Text>
 
-        <Text style={styles.date}>📅 {getToday()}</Text>
+        <Text style={styles.date}>📅 {todayISO()}</Text>
 
         <View style={styles.buttonRow}>
           {!isCheckedIn ? (
@@ -171,9 +162,9 @@ const DetailScreen = () => {
           )}
         </View>
 
-        <Text style={styles.logTitle}>Zeiteintraege</Text>
+        <Text style={styles.logTitle}>Zeiteinträge</Text>
         {property.timeEntries.length === 0 ? (
-          <Text style={styles.noEntries}>Noch keine Eintraege vorhanden.</Text>
+          <Text style={styles.noEntries}>Noch keine Einträge vorhanden.</Text>
         ) : (
           <FlatList
             data={[...property.timeEntries].sort((a, b) => b.startTime.localeCompare(a.startTime))}
@@ -181,9 +172,9 @@ const DetailScreen = () => {
             renderItem={({ item }) => (
               <View style={styles.entry}>
                 <Text style={styles.entryText}>
-                  {item.date} – Start: {formatTime(item.startTime)}, Ende:{' '}
-                  {item.endTime ? formatTime(item.endTime) : 'laeuft...'}, Dauer:{' '}
-                  {item.duration !== null ? `${item.duration} Min.` : 'laeuft...'}
+                  {item.date} – Start: {fmtTime(item.startTime)}, Ende:{' '}
+                  {item.endTime ? fmtTime(item.endTime) : 'läuft...'}, Dauer:{' '}
+                  {item.duration !== null ? `${item.duration} Min.` : 'läuft...'}
                 </Text>
               </View>
             )}
@@ -250,6 +241,9 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
 });
+
+
+
 
 
 
