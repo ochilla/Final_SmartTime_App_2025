@@ -1,41 +1,77 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
-# dependencies
+# Dependencies
 node_modules/
+jspm_packages/
+bower_components/
 
 # Expo
 .expo/
+.expo-shared/
 dist/
 web-build/
 expo-env.d.ts
 
 # Native
+ios/
+android/
 .kotlin/
-*.orig.*
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
 
-# Metro
+# Build artifacts
+build/
+build/Release
+web_modules/
+.next/
+out/
+.nuxt/
+.cache/
+.temp/
+.svelte-kit/
+.docusaurus/
+.vitepress/
+
+# Metro & Cache
 .metro-health-check*
-
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# macOS
-.DS_Store
-*.pem
-
-# local env files
-.env*.local
-
-# typescript
+.cache/
+.parcel-cache
+.nyc_output/
+coverage/
+*.lcov
 *.tsbuildinfo
 
-# generated native folders
-/ios
-/android
+# Logs & debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+logs/
+*.orig.*
+.report.*
+report.*
+.eslintcache
+.stylelintcache
+
+# Env & config
+.env
+.env.*
+.env*.local
+!.env.example
+
+# macOS / system
+.DS_Store
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Editor
+.vscode/
+.vscode-test/
+.tern-port
+
