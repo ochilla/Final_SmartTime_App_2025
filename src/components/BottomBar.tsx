@@ -20,6 +20,7 @@ export default function BottomBar() {
   };
 
   const isActive = (screen: keyof RootStackParamList) => currentRoute === screen;
+  const onDashboard = isActive('Dashboard');
 
   return (
     <View style={styles.container}>
@@ -35,10 +36,21 @@ export default function BottomBar() {
 
       {/* Mitte: Zeiten / Dashboard */}
       <TouchableOpacity style={styles.centerTab} onPress={() => goTo('Dashboard')}>
-        <View style={styles.centerButton}>
-          <Ionicons name="time-outline" size={26} color="#0f1c2e" />
+        <View
+          style={[
+            styles.centerButton,
+            onDashboard ? styles.centerButtonActive : styles.centerButtonInactive,
+          ]}
+        >
+          <Ionicons
+            name="time-outline"
+            size={26}
+            color={onDashboard ? '#0f1c2e' : '#7a8a9c'}
+          />
         </View>
-        <Text style={styles.labelCenter}>Zeiten</Text>
+        <Text style={[styles.label, onDashboard ? styles.labelActive : styles.labelInactive]}>
+          Zeiten
+        </Text>
       </TouchableOpacity>
 
       {/* Rechts: Neue Liegenschaft */}
@@ -73,7 +85,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   centerButton: {
-    backgroundColor: '#00D4FF',
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -81,17 +92,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 4,
   },
+  centerButtonActive: {
+    backgroundColor: '#00D4FF',
+    borderWidth: 0,
+  },
+  centerButtonInactive: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#7a8a9c',
+  },
   label: {
     fontSize: 12,
-    color: '#7a8a9c',
     fontFamily: 'Rajdhani_600SemiBold',
+    color: '#7a8a9c',
   },
   labelActive: {
     color: '#00D4FF',
   },
-  labelCenter: {
-    fontSize: 12,
-    color: '#00D4FF',
-    fontFamily: 'Rajdhani_600SemiBold',
+  labelInactive: {
+    color: '#7a8a9c',
   },
 });
+
