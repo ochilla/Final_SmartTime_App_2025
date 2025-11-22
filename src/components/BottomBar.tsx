@@ -1,4 +1,3 @@
-// ✅ src/components/BottomBar.tsx
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -49,7 +48,7 @@ export default function BottomBar() {
           />
         </View>
         <Text style={[styles.label, onDashboard ? styles.labelActive : styles.labelInactive]}>
-          Zeiten
+          Reports
         </Text>
       </TouchableOpacity>
 

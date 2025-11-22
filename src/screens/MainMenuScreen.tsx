@@ -1,74 +1,188 @@
-// ✅ src/screens/MainMenuScreen.tsx
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
-  ScrollView,
   StyleSheet,
-  Dimensions,
+  FlatList,
+  TouchableOpacity,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import { Ionicons } from '@expo/vector-icons';
 import TopBar from '../components/TopBar';
 import BottomBar from '../components/BottomBar';
-import { Ionicons } from '@expo/vector-icons';
+import { getProperties } from '../storage/propertyStorage';
+import { Property, TimeEntry } from '../types/property';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/AppNavigator';
 
-const screenWidth = Dimensions.get('window').width;
+type Nav = NativeStackNavigationProp<RootStackParamList>;
+
+const isoToday = () => new Date().toISOString().split('T')[0];
+
+// Woche Mo–So (UTC)
+const getWeekBoundsUTC = () => {
+  const now = new Date();
+  const dowMon0 = (now.getUTCDay() + 6) % 7; // So=0 → Mo=0
+  const start = new Date(Date.UTC(
+    now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - dowMon0
+  ));
+  const end = new Date(Date.UTC(
+    start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate() + 6, 23, 59, 59, 999
+  ));
+  return { start, end };
+};
+
+// Monat (UTC)
+const getMonthBoundsUTC = () => {
+  const now = new Date();
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+  return { start, end };
+};
+
+// "YYYY-MM-DD" -> Date(UTC)
+const parseISODateUTC = (d: string) => {
+  const [y, m, day] = d.split('-').map(Number);
+  return new Date(Date.UTC(y, (m ?? 1) - 1, day ?? 1));
+};
+
+const fmtMin = (min: number) => {
+  if (!min || min < 0) return '0 Min';
+  if (min < 60) return `${min} Min`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m === 0 ? `${h} h` : `${h} h ${m} m`;
+};
+
+// letzte Aktivität: aktive zuerst, sonst nach letzter endTime/startTime desc
+const lastActivityTs = (p: Property): number => {
+  if (!Array.isArray(p.timeEntries) || p.timeEntries.length === 0) return 0;
+  const open = p.timeEntries.find(e => e.endTime === null);
+  if (open) return new Date(open.startTime).getTime();
+  return p.timeEntries.reduce((acc, e) => {
+    const ts = new Date(e.endTime ?? e.startTime).getTime();
+    return ts > acc ? ts : acc;
+  }, 0);
+};
+
+// Summen je Zeitraum (laufende Einträge nicht zählen)
+const calcSums = (
+  entries: TimeEntry[] = [],
+  today: string,
+  w: { start: Date; end: Date },
+  m: { start: Date; end: Date }
+) => {
+  let dayTotal = 0;
+  let weekTotal = 0;
+  let monthTotal = 0;
+  for (const e of entries) {
+    if (e.duration === null) continue; // aktiv -> nicht zählen
+    if (e.date === today) dayTotal += e.duration;
+    if (e.date) {
+      const d = parseISODateUTC(e.date);
+      if (d >= w.start && d <= w.end) weekTotal += e.duration;
+      if (d >= m.start && d <= m.end) monthTotal += e.duration;
+    }
+  }
+  return { dayTotal, weekTotal, monthTotal };
+};
 
 export default function MainMenuScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [properties, setProperties] = useState<Property[]>([]);
+  const navigation = useNavigation<Nav>();
+
+  const today = useMemo(isoToday, []);
+  const week = useMemo(getWeekBoundsUTC, []);
+  const month = useMemo(getMonthBoundsUTC, []);
+
+  useEffect(() => {
+    const load = async () => {
+      const loaded = await getProperties();
+      const normalized = loaded.map(p => ({
+        ...p,
+        timeEntries: Array.isArray(p.timeEntries) ? p.timeEntries : [],
+      }));
+      normalized.sort((a, b) => {
+        // aktive zuerst
+        const aActive = a.timeEntries.some(e => e.endTime === null);
+        const bActive = b.timeEntries.some(e => e.endTime === null);
+        if (aActive !== bActive) return aActive ? -1 : 1;
+        // dann nach letzter Aktivität
+        return lastActivityTs(b) - lastActivityTs(a);
+      });
+      setProperties(normalized);
+    };
+    const unsub = navigation.addListener('focus', load);
+    load();
+    return unsub;
+  }, [navigation]);
+
+  const renderItem = ({ item }: { item: Property }) => {
+    const isActive = item.timeEntries.some(e => e.endTime === null);
+    const { dayTotal, weekTotal, monthTotal } = calcSums(item.timeEntries, today, week, month);
+
+    return (
+      <TouchableOpacity
+        style={styles.row}
+        onPress={() => navigation.navigate('PropertyDetail', { propertyId: item.id })}
+        accessibilityLabel={`Liegenschaft ${item.name} öffnen`}
+      >
+        {/* Ampel */}
+        <View style={styles.trafficWrap}>
+          <View style={[
+            styles.trafficDot,
+            { backgroundColor: isActive ? '#22c55e' : '#9ca3af' }
+          ]} />
+        </View>
+
+        {/* Titel & Adresse */}
+        <View style={styles.info}>
+          <Text style={styles.title}>{item.name}</Text>
+          <Text style={styles.subtitle}>
+            {item.street} {item.houseNumber}, {item.city}
+          </Text>
+          {/* Summen kompakt in einer Zeile */}
+          <View style={styles.sumsRow}>
+            <View style={styles.sumChip}>
+              <Ionicons name="sunny-outline" size={14} color="#7a8a9c" />
+              <Text style={styles.sumText}>Heute</Text>
+              <Text style={styles.sumVal}>{fmtMin(dayTotal)}</Text>
+            </View>
+            <View style={styles.sumChip}>
+              <Ionicons name="calendar-outline" size={14} color="#7a8a9c" />
+              <Text style={styles.sumText}>Woche</Text>
+              <Text style={styles.sumVal}>{fmtMin(weekTotal)}</Text>
+            </View>
+            <View style={styles.sumChip}>
+              <Ionicons name="calendar-number-outline" size={14} color="#7a8a9c" />
+              <Text style={styles.sumText}>Monat</Text>
+              <Text style={styles.sumVal}>{fmtMin(monthTotal)}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Chevron */}
+        <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.screen}>
-      <TopBar title="Smartime" />
+      <TopBar title="Monitoring" />
 
       <View style={styles.content}>
-        <ScrollView
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContainer}
-        >
-          {/* Card 1: Liegenschaften */}
-          <View style={styles.card}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="business" size={30} color="white" />
-            </View>
-            <Text style={styles.title}>Liegenschaften</Text>
-            <Text style={styles.subtitle}>Erfassen</Text>
-            <Text style={styles.description}>
-              Verwalten Sie Ihre Immobilien und Standorte
-            </Text>
-            <TouchableOpacity
-              style={styles.button}
-              onPress={() => navigation.navigate('AddProperty')}
-            >
-              <Text style={styles.buttonText}>Oeffnen</Text>
-              <Ionicons name="chevron-forward" size={18} color="white" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Card 2: Zeiterfassung – farblich wie Card 1 */}
-          <View style={[styles.card /*, styles.cardAlt (nicht mehr nötig) */]}>
-            <View style={styles.iconContainer /* iconContainerAlt entfällt */}>
-              <Ionicons name="time" size={30} color="white" />
-            </View>
-            <Text style={styles.title}>Zeiterfassung</Text>
-            <Text style={styles.subtitle}>Dashboard</Text>
-            <Text style={styles.description}>
-              Uebersicht aller Zeiten und Liegenschaften
-            </Text>
-            <TouchableOpacity
-              style={styles.button}
-              onPress={() => navigation.navigate('Dashboard')}
-            >
-              <Text style={styles.buttonText}>Oeffnen</Text>
-              <Ionicons name="chevron-forward" size={18} color="white" />
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
+        {properties.length === 0 ? (
+          <Text style={styles.empty}>Keine Liegenschaften erfasst.</Text>
+        ) : (
+          <FlatList
+            data={properties}
+            keyExtractor={(p) => p.id}
+            renderItem={renderItem}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            contentContainerStyle={styles.listPad}
+          />
+        )}
       </View>
 
       <BottomBar />
@@ -77,69 +191,84 @@ export default function MainMenuScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  content: {
-    flex: 1,
-    paddingTop: 16,
-  },
-  scrollContainer: {
+  screen: { flex: 1, backgroundColor: '#f5f5f5' },
+  content: { flex: 1 },
+  listPad: { paddingVertical: 8 },
+
+  row: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#ffffff',
+    borderColor: '#e6e6e6',
+    borderBottomWidth: 1,
   },
-  card: {
-    width: screenWidth * 0.85,
-    backgroundColor: '#083c55', // Einheitlich für beide Karten
-    borderRadius: 24,
-    padding: 24,
-    marginHorizontal: 10,
+
+  separator: { height: 0 },
+
+  trafficWrap: {
+    width: 28,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 10,
   },
-  // cardAlt: { backgroundColor: '#083c55' }, // nicht mehr benötigt
-  iconContainer: {
-    backgroundColor: '#00d4ff', // Einheitlich für beide Karten
-    padding: 12,
-    borderRadius: 16,
-    marginBottom: 20,
+  trafficDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
   },
-  // iconContainerAlt: { backgroundColor: '#00d4ff' }, // nicht mehr benötigt
+
+  info: { flex: 1 },
   title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: 'white',
+    fontSize: 16,
+    color: '#0f1c2e',
     fontFamily: 'Rajdhani_600SemiBold',
   },
   subtitle: {
-    fontSize: 16,
-    color: 'white',
-    marginBottom: 8,
-    fontFamily: 'Rajdhani_600SemiBold',
-  },
-  description: {
-    fontSize: 13,
-    color: '#d4d4d4',
-    textAlign: 'center',
-    marginBottom: 20,
+    fontSize: 12.5,
+    color: '#687385',
     fontFamily: 'Rajdhani_400Regular',
+    marginTop: 1,
   },
-  button: {
+
+  sumsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 6,
+    flexWrap: 'wrap',
+  },
+  sumChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00d4ff',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    gap: 6,
+    backgroundColor: '#f7f8fa',
+    borderWidth: 1,
+    borderColor: '#e6e6e6',
+    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
   },
-  buttonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    marginRight: 6,
+  sumText: {
+    fontSize: 12,
+    color: '#7a8a9c',
     fontFamily: 'Rajdhani_600SemiBold',
   },
+  sumVal: {
+    fontSize: 13,
+    color: '#0f1c2e',
+    fontFamily: 'Rajdhani_600SemiBold',
+  },
+
+  empty: {
+    fontStyle: 'italic',
+    color: '#555',
+    padding: 20,
+    fontFamily: 'Rajdhani_400Regular',
+  },
 });
+
+
 
 
 

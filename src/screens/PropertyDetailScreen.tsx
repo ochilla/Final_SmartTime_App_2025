@@ -1,4 +1,3 @@
-// ✅ src/screens/PropertyDetailScreen.tsx – Mehrere parallele Check-ins (ohne globalen activeTimer)
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
@@ -11,7 +10,7 @@ import {
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { Property, TimeEntry } from '../types/property';
-import { getProperties, updateProperty, deleteProperty } from '../storage/propertyStorage';
+import { getProperties, updateProperty } from '../storage/propertyStorage';
 import TopBar from '../components/TopBar';
 import BottomBar from '../components/BottomBar';
 
@@ -101,26 +100,6 @@ const DetailScreen = () => {
     setProperty(updated);
   };
 
-  const confirmDeleteProperty = () => {
-    if (!property) return;
-    const name = property.name;
-    Alert.alert(
-      'Liegenschaft löschen',
-      `„${name}“ wirklich löschen? Alle zugehörigen Zeiteinträge werden entfernt.`,
-      [
-        { text: 'Abbrechen', style: 'cancel' },
-        {
-          text: 'Löschen',
-          style: 'destructive',
-          onPress: async () => {
-            await deleteProperty(property.id);
-            navigation.navigate('Dashboard');
-          },
-        },
-      ]
-    );
-  };
-
   if (!property) {
     return (
       <View style={styles.screen}>
@@ -180,13 +159,6 @@ const DetailScreen = () => {
             )}
           />
         )}
-
-        <TouchableOpacity
-          style={[styles.actionButton, styles.deleteButton]}
-          onPress={confirmDeleteProperty}
-        >
-          <Text style={[styles.actionButtonText, { color: '#ffffff' }]}>Liegenschaft löschen</Text>
-        </TouchableOpacity>
       </View>
 
       <BottomBar />
@@ -236,11 +208,8 @@ const styles = StyleSheet.create({
   entry: { borderBottomWidth: 1, borderBottomColor: '#ddd', paddingVertical: 6 },
   entryText: { color: '#333', fontFamily: 'Rajdhani_400Regular' },
   noEntries: { color: '#777', fontStyle: 'italic', fontFamily: 'Rajdhani_400Regular' },
-  deleteButton: {
-    backgroundColor: '#b02a2a',
-    marginTop: 20,
-  },
 });
+
 
 
 

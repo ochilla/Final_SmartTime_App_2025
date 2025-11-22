@@ -16,21 +16,58 @@ Zeit­erfassung für Reinigungsunternehmen: Liegenschaften verwalten und Arbeits
 - [Lizenz](#lizenz)
 
 ## Features
-- **Liegenschaften-CRUD**: Anlegen, Listen, Löschen.
-- **Zeiterfassung pro Liegenschaft**:
-- Check-in erzeugt offenen Eintrag (`endTime=null`)
-- Check-out setzt `endTime` & `duration (min)`
-- **Parallele Check-ins** zwischen verschiedenen Liegenschaften erlaubt.
-- **Übersicht**: Dashboard mit allen Liegenschaften, Navigation ins Detail.
-- **Konsistente Navigation**: Native Stack + eigene **BottomBar** (Home / Zeiten / Neue).
-- **Persistenz**: AsyncStorage (offline).
+- **Liegenschaften verwalten**
+  - Erfassen: Name, Strasse, Hausnummer, Ort
+  - Loeschen einzelner Liegenschaften **mit Bestaetigung**
+  - **Sperre gegen Loeschen bei aktivem Check-in** (mindestens ein Zeiteintrag mit `endTime === null`)
+- **Zeiterfassung pro Liegenschaft**
+  - Check-in / Check-out mit lesbaren Zeiten (z. B. `09:15 Uhr`)
+  - Mehrere Eintraege pro Tag moeglich
+  - **Parallele Check-ins** auf verschiedenen Liegenschaften moeglich
+  - Sortierung der Uebersichten nach Aktivitaet (aktive zuerst), sonst nach letzter Aktivitaet
+- **Monitoring & Navigation**
+  - **MainMenu**: Monitoring-Liste aller Liegenschaften (ohne Cards), Ampel-Status:
+    - Gruen = aktiv (Timer laeuft)
+    - Grau = inaktiv
+    - Summen Heute / Woche / Monat
+  - **BottomBar** auf allen Screens:
+    - **Links**: Home (MainMenu)
+    - **Mitte**: Zeiten/Reports (hervorgehoben, wenn aktiv)
+    - **Rechts**: Neue (AddProperty)
+  - **TopBar**: Konsistentes Header-Design mit optionalem Zurueck-Button
+- **Reports (Dashboard-Screen)**
+  - Zeitraumwahl **Monat** oder **Jahr** (Navigation mit ‹/›)
+  - **PDF-Export Summen (alle Liegenschaften)**
+  - **PDF-Export pro Liegenschaft** (Detailtabelle + Summe fuer den Zeitraum)
 
 ## Tech-Stack
-- React Native (Expo)
-- TypeScript
-- React Navigation (Native Stack)
-- AsyncStorage
-- @expo-google-fonts/rajdhani
+- **React Native** (Expo, TypeScript)
+- **Navigation**: `@react-navigation/native` + `@react-navigation/native-stack` (+ BottomBar-Komponente)
+- **Storage**: `@react-native-async-storage/async-storage`
+- **PDF / Teilen**: `expo-print`, `expo-sharing`
+- **Fonts**: Rajdhani (`@expo-google-fonts/rajdhani`, `expo-font`)
+- **Icons**: `@expo/vector-icons`
+
+## Design-Tokens
+
+- **App-Hintergrund**: `#f5f5f5`
+- **TopBar & BottomBar**: `#0f1c2e`
+- **Akzent in Bars / Primaer-Button**: `#00D4FF` (Border: `#00BDE3`)
+- **Schrift**: Rajdhani (`400 Regular`, `600 SemiBold`)
+- **Buttons (primaer)**: Text `#0f1c2e`, Radius 10, Border 1
+
+##Abhaengigkeiten##
+
+npm install
+
+# Expo-Module (PDF, Teilen, Fonts)
+npx expo install expo-print expo-sharing expo-font @expo-google-fonts/rajdhani
+
+# React Native Basics (falls frisch geklont)
+npx expo install @react-native-async-storage/async-storage react-native-screens react-native-safe-area-context
+
+# Navigation & Icons
+npm install @react-navigation/native @react-navigation/native-stack @react-navigation/bottom-tabs @expo/vector-icons
 
 ## Projektstruktur
 src/

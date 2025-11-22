@@ -1,4 +1,3 @@
-// ✅ src/screens/AddPropertyScreen.tsx – mit Löschen pro Eintrag
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
@@ -13,14 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import TopBar from '../components/TopBar';
 import BottomBar from '../components/BottomBar';
 import { Ionicons } from '@expo/vector-icons';
-
-interface Property {
-  id: string;
-  name: string;
-  street: string;
-  houseNumber: string;
-  city: string;
-}
+import { Property } from '../types/property'; // zentrale Typen nutzen
 
 const STORAGE_KEY = 'SMARTIME_PROPERTIES';
 
@@ -41,11 +33,13 @@ export default function AddPropertyScreen() {
 
   const loadProperties = async () => {
     const json = await AsyncStorage.getItem(STORAGE_KEY);
-    if (json) {
-      setProperties(JSON.parse(json));
-    } else {
-      setProperties([]);
-    }
+    const list: Property[] = json ? JSON.parse(json) : [];
+    // Normalisieren: sicherstellen, dass timeEntries ein Array ist
+    const normalized = list.map(p => ({
+      ...p,
+      timeEntries: Array.isArray(p.timeEntries) ? p.timeEntries : [],
+    }));
+    setProperties(normalized);
   };
 
   const saveProperty = async () => {
@@ -60,11 +54,12 @@ export default function AddPropertyScreen() {
       street,
       houseNumber,
       city,
+      timeEntries: [], // wichtig für spätere Prüfungen
     };
 
-    const updatedProperties = [...properties, newProperty];
-    setProperties(updatedProperties);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedProperties));
+    const updated = [...properties, newProperty];
+    setProperties(updated);
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
 
     setName('');
     setStreet('');
@@ -73,9 +68,20 @@ export default function AddPropertyScreen() {
   };
 
   const confirmDelete = (id: string, title: string) => {
+    const prop = properties.find(p => p.id === id);
+    const hasActive = prop?.timeEntries?.some(e => e.endTime === null) ?? false;
+
+    if (hasActive) {
+      Alert.alert(
+        'Löschen nicht möglich',
+        `„${title}“ hat einen aktiven Check-in. Bitte zuerst Check-out durchführen.`
+      );
+      return;
+    }
+
     Alert.alert(
       'Liegenschaft löschen',
-      `„${title}“ wirklich löschen? Dieser Schritt kann nicht rückgaengig gemacht werden.`,
+      `„${title}“ wirklich löschen? Dieser Schritt kann nicht rueckgaengig gemacht werden.`,
       [
         { text: 'Abbrechen', style: 'cancel' },
         {
@@ -184,23 +190,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#d0d0d0',
   },
+  // Primär-Button wie im Reports-Screen
   button: {
     backgroundColor: '#00D4FF',
+    borderColor: '#00BDE3',
+    borderWidth: 1,
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
     marginTop: 10,
   },
   buttonText: {
     color: '#0f1c2e',
-    fontWeight: 'bold',
     fontFamily: 'Rajdhani_600SemiBold',
+    fontSize: 16,
   },
   subtitle: {
     color: '#0f1c2e',
     marginBottom: 10,
-    fontWeight: 'bold',
     fontFamily: 'Rajdhani_600SemiBold',
+    fontSize: 14,
   },
   propertyRow: {
     flexDirection: 'row',
@@ -237,6 +246,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
 });
+
+
 
 
 
