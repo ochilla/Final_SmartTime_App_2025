@@ -87,6 +87,9 @@ types/
 property.ts
 App.tsx
 
+## Screenvideo
+Zeigt die Lauffägikeit der App und ihre Funktionen.
+Abgelegt unter smartime_app/screenvid/Final_Smartime_app_screenvideo_251122.
 
 ## Setup & Scripts
 ```bash
